@@ -18,5 +18,6 @@
 # Boston, MA 02110-1301, USA.
 
 install(FILES
-    acars2_demod.xml DESTINATION share/gnuradio/grc/blocks
+    acars2_demod.xml
+    acars2_decode.xml DESTINATION share/gnuradio/grc/blocks
 )

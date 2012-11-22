@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <block>
-  <name>demod</name>
+  <name>ACARS demod</name>
   <key>acars2_demod</key>
   <category>acars2</category>
   <import>import acars2</import>

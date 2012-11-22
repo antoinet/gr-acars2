@@ -22,5 +22,6 @@
 ########################################################################
 install(FILES
     acars2_api.h
-    acars2_demod.h DESTINATION include/acars2
+    acars2_demod.h
+    acars2_decode.h DESTINATION include/acars2
 )

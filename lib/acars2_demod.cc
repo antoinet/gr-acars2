@@ -136,6 +136,7 @@ acars2_demod::general_work(
 	gr_vector_const_void_star &input_items,
 	gr_vector_void_star &output_items)
 {
+	uint32_t i;
 	uint32_t nin = ninput_items[0];
 	uint32_t nout = 0;
 	const float *in = (const float *) input_items[0];
@@ -143,10 +144,11 @@ acars2_demod::general_work(
 
 	float f, f_mark, f_space;
 
-	for (; nin > 0; nin--, in++) {
+	for (i = 0; i < nin; i++) {
 		f_mark = fsqr(mac(in, corr_mark_i, corrlen)) + fsqr(mac(in, corr_mark_q, corrlen));
 		f_space = fsqr(mac(in, corr_space_i, corrlen)) + fsqr(mac(in, corr_space_q, corrlen));
 		f = f_mark - f_space;
+		in++;
 		
 		freq_shreg <<= 1;
 		freq_shreg |= (f > 0);
@@ -166,6 +168,7 @@ acars2_demod::general_work(
 			curbit_shreg <<= 1;
 			curbit_shreg |= ((curbit_shreg >> 1) ^ freq_shreg) & 1;
 			bit_count++;
+
 
 			switch (state) {
 
@@ -237,12 +240,10 @@ acars2_demod::general_work(
 				if (bit_count < 8) break; // feed in more bits
 
 				// output byte value
-				*out++ = bit_reverse(curbit_shreg & 0x7f); // chop off parity bit
+				*out++ = bit_reverse(curbit_shreg) & 0x7f; // chop off parity bit
 				nout++;
 
 				if (((curbit_shreg & 0xff) == 0xc0) || ((curbit_shreg & 0xff) == 0xe9)) {
-					*out++ = '\n';
-					nout++;
 					bit_count = 0;
 					state = PRE_KEY;
 					break;

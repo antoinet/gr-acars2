@@ -2,9 +2,10 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Top Block
-# Generated: Thu Nov 22 14:18:45 2012
+# Generated: Thu Nov 22 15:36:21 2012
 ##################################################
 
+from gnuradio import audio
 from gnuradio import eng_notation
 from gnuradio import gr
 from gnuradio.eng_option import eng_option
@@ -29,16 +30,22 @@ class top_block(grc_wxgui.top_block_gui):
 		##################################################
 		# Blocks
 		##################################################
-		self.gr_wavfile_source_0 = gr.wavfile_source("/home/user/cno/gnuradio/gr-acars2/samples/acars06.wav", False)
+		self.gr_wavfile_source_0 = gr.wavfile_source("/home/user/cno/gnuradio/gr-acars2/samples/acars05.wav", False)
+		self.gr_throttle_0 = gr.throttle(gr.sizeof_float*1, samp_rate)
 		self.gr_file_sink_0 = gr.file_sink(gr.sizeof_char*1, "/home/user/cno/gnuradio/gr-acars2/samples/output.txt")
 		self.gr_file_sink_0.set_unbuffered(True)
+		self.audio_sink_0 = audio.sink(samp_rate, "", True)
 		self.acars2_demod_0 = acars2.demod(samp_rate)
+		self.acars2_decode_0 = acars2.decode()
 
 		##################################################
 		# Connections
 		##################################################
-		self.connect((self.gr_wavfile_source_0, 0), (self.acars2_demod_0, 0))
-		self.connect((self.acars2_demod_0, 0), (self.gr_file_sink_0, 0))
+		self.connect((self.acars2_demod_0, 0), (self.acars2_decode_0, 0))
+		self.connect((self.acars2_decode_0, 0), (self.gr_file_sink_0, 0))
+		self.connect((self.gr_wavfile_source_0, 0), (self.gr_throttle_0, 0))
+		self.connect((self.gr_throttle_0, 0), (self.acars2_demod_0, 0))
+		self.connect((self.gr_throttle_0, 0), (self.audio_sink_0, 0))
 
 	def get_samp_rate(self):
 		return self.samp_rate

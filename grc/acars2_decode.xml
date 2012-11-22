@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<block>
+  <name>ACARS decode</name>
+  <key>acars2_decode</key>
+  <category>acars2</category>
+  <import>import acars2</import>
+  <make>acars2.decode()</make>
+
+  <sink>
+    <name>in</name>
+    <type>byte</type>
+  </sink>
+
+  <source>
+    <name>out</name>
+    <type>byte</type>
+  </source>
+</block>
