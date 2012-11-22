@@ -4,7 +4,7 @@
   <key>acars2_demod</key>
   <category>acars2</category>
   <import>import acars2</import>
-  <make>acars2.demod(samp_rate)</make>
+  <make>acars2.demod($samp_rate)</make>
   <param>
     <name>Sample Rate</name>
     <key>samp_rate</key>
@@ -15,5 +15,10 @@
     <name>in</name>
     <type>float</type>
   </sink>
+
+   <source>
+	   <name>out</name>
+	   <type>byte</type>
+   </source>
 
 </block>

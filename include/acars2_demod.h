@@ -23,7 +23,7 @@
 #define INCLUDED_ACARS2_DEMOD_H
 
 #include <acars2_api.h>
-#include <gr_sync_block.h>
+#include <gr_block.h>
 #include <cstdio>
 #include <cstdlib>
 
@@ -43,7 +43,7 @@ ACARS2_API acars2_demod_sptr acars2_make_demod (int samp_rate=48000);
  * \ingroup block
  *
  */
-class ACARS2_API acars2_demod : public gr_sync_block
+class ACARS2_API acars2_demod : public gr_block
 {
  private:
 	friend ACARS2_API acars2_demod_sptr acars2_make_demod (int samp_rate);
@@ -63,9 +63,13 @@ class ACARS2_API acars2_demod : public gr_sync_block
 	~acars2_demod();
 
 	// Where all the action really happens
-	int work (int noutput_items,
+	int general_work (
+		int noutput_items,
+		gr_vector_int &ninput_items,
 	    gr_vector_const_void_star &input_items,
-	    gr_vector_void_star &output_items);
+	    gr_vector_void_star &output_items
+	);
+
 };
 
 #endif /* INCLUDED_ACARS2_DEMOD_H */

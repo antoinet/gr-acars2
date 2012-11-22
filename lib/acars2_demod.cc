@@ -54,9 +54,9 @@ fsqr (float f) {
  * The private constructor
  */
 acars2_demod::acars2_demod (int samp_rate)
-  : gr_sync_block ("square2_ff",
+  : gr_block ("acars2_demod_fb",
 		   gr_make_io_signature(1, 1, sizeof(float)),
-		   gr_make_io_signature(0, 0, 0))
+		   gr_make_io_signature(1, 1, sizeof(uint8_t)))
 {
 	float f;
 	int i;
@@ -105,6 +105,9 @@ acars2_demod::acars2_demod (int samp_rate)
 		BAUD,
 		sphase,
 		sphase_inc);
+
+	set_fixed_rate(false);
+	set_relative_rate(1.0f/corrlen);
 }
 
 
@@ -121,18 +124,20 @@ acars2_demod::~acars2_demod()
 
 
 int
-acars2_demod::work(int noutput_items,
-		  gr_vector_const_void_star &input_items,
-		  gr_vector_void_star &output_items)
+acars2_demod::general_work(
+	int noutput_items,
+	gr_vector_int &ninput_items,
+	gr_vector_const_void_star &input_items,
+	gr_vector_void_star &output_items)
 {
+	uint32_t nin = ninput_items[0];
+	uint32_t nout = 0;
 	const float *in = (const float *) input_items[0];
-	float *out = (float *) output_items[0];
+	char *out = (char *) output_items[0];
 
-	// Do <+signal processing+>
-	uint32_t length = noutput_items;
 	float f, f_mark, f_space;
 
-	for (; length > 0; length--, in++) {
+	for (; nin > 0; nin--, in++) {
 		f_mark = fsqr(mac(in, corr_mark_i, corrlen)) + fsqr(mac(in, corr_mark_q, corrlen));
 		f_space = fsqr(mac(in, corr_space_i, corrlen)) + fsqr(mac(in, corr_space_q, corrlen));
 		f = f_mark - f_space;
@@ -153,11 +158,14 @@ acars2_demod::work(int noutput_items,
 		if (sphase >= 0x10000u) {
 			sphase &= 0xffffu;
 			curbit = (curbit ^ shreg) & 1;
-			printf("%c", '0' + (shreg & 1));
+			*out++ = '0' + curbit;
+			printf("%c", '0' + curbit);
+			nout++;
 		}
 		
 	}
 	// Tell runtime system how many output items we produced.
-	return noutput_items;
+	consume_each(ninput_items[0]);
+	return nout;
 }
 

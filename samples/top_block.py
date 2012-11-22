@@ -2,7 +2,7 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Top Block
-# Generated: Wed Nov 21 18:06:36 2012
+# Generated: Thu Nov 22 09:44:36 2012
 ##################################################
 
 from gnuradio import eng_notation
@@ -29,13 +29,16 @@ class top_block(grc_wxgui.top_block_gui):
 		##################################################
 		# Blocks
 		##################################################
-		self.gr_wavfile_source_0 = gr.wavfile_source("/home/user/cno/gnuradio/gr-acars2/samples/acars01.wav", False)
+		self.gr_wavfile_source_0 = gr.wavfile_source("/home/user/cno/gnuradio/gr-acars2/samples/acars02.wav", False)
+		self.gr_file_sink_0 = gr.file_sink(gr.sizeof_char*1, "/home/user/cno/gnuradio/gr-acars2/samples/output.txt")
+		self.gr_file_sink_0.set_unbuffered(True)
 		self.acars2_demod_0 = acars2.demod(samp_rate)
 
 		##################################################
 		# Connections
 		##################################################
 		self.connect((self.gr_wavfile_source_0, 0), (self.acars2_demod_0, 0))
+		self.connect((self.acars2_demod_0, 0), (self.gr_file_sink_0, 0))
 
 	def get_samp_rate(self):
 		return self.samp_rate
