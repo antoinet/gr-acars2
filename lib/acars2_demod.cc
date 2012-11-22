@@ -56,19 +56,16 @@ fsqr (float f) {
 acars2_demod::acars2_demod (int samp_rate)
   : gr_block ("acars2_demod_fb",
 		   gr_make_io_signature(1, 1, sizeof(float)),
-		   gr_make_io_signature(1, 1, sizeof(uint8_t)))
+		   gr_make_io_signature(1, 1, sizeof(uint8_t))),
+	freq_shreg(0), curbit_shreg(0), bit_count(0),
+	consecutive(0), sphase(0), state(PRE_KEY)
 {
 	float f;
 	int i;
-
-	shreg = 0;
-	curbit = 0;
-
-	sphase = 0;
+	
 	sphase_inc = 0x10000u*BAUD/samp_rate;
 
 	corrlen = 2*samp_rate/BAUD;
-
 	corr_mark_i = (float*) calloc(corrlen, sizeof(float));
 	corr_mark_q = (float*) calloc(corrlen, sizeof(float));
 	corr_space_i = (float*) calloc(corrlen, sizeof(float));
@@ -99,15 +96,13 @@ acars2_demod::acars2_demod (int samp_rate)
 	printf(" ACARS demod\n"
 		"samp_rate:\t%d\n"
 		"baud_rate:\t%d\n"
-		"sphase:\t\t%d\n"
 		"sphase_inc:\t%d\n",
 		samp_rate,
 		BAUD,
-		sphase,
 		sphase_inc);
 
 	set_fixed_rate(false);
-	set_relative_rate(1.0f/corrlen);
+	set_relative_rate(1.0/corrlen/8);
 }
 
 
@@ -142,11 +137,11 @@ acars2_demod::general_work(
 		f_space = fsqr(mac(in, corr_space_i, corrlen)) + fsqr(mac(in, corr_space_q, corrlen));
 		f = f_mark - f_space;
 		
-		shreg <<= 1;
-		shreg |= (f > 0);
+		freq_shreg <<= 1;
+		freq_shreg |= (f > 0);
 		
-		// check if transition (0->1 or 1->0)
-		if ((shreg ^ (shreg >> 1)) & 1) {
+		// adapt window on transition
+		if (TRANSITION(freq_shreg)) {
 			if (sphase < (0x8000u - (sphase_inc/2)))
 				sphase += sphase_inc/8;
 			else
@@ -154,12 +149,53 @@ acars2_demod::general_work(
 		}
 		sphase += sphase_inc;
 
-		// check if past a symbol
 		if (sphase >= 0x10000u) {
+			// past symbol boundary, feed a bit
 			sphase &= 0xffffu;
-			curbit = (curbit ^ shreg) & 1;
-			*out++ = '0' + curbit;
-			printf("%c", '0' + curbit);
+			curbit_shreg <<= 1;
+			curbit_shreg |= (curbit_shreg ^ freq_shreg) & 1;
+
+			switch (state) {
+			case PRE_KEY:
+				// scan for pre-key, expect >= 128bits of 1s
+				if (TRANSITION(curbit_shreg)) {
+					if (consecutive >= 128) {
+						if (!(curbit_shreg & 1)) {
+							// wrong bit interpretation, flip bits
+							curbit_shreg = ~curbit_shreg;
+						}
+						
+						// start with .....110
+						bit_count = 3;
+						state = SYNC;
+					}
+					consecutive = 0;
+				} else {
+					consecutive++;
+				}
+				break;
+			case SYNC:
+				if (bit_count < 32) {
+					 // feed in more bits
+					if (TRANSITION(curbit_shreg)) {
+						consecutive = 0;
+					} else {
+						consecutive++;
+					}
+					break;
+				}
+				// match sync chars: '+' (0x2b), '*' (0x2a), <SYN> (0x16), <SYN> (0x16)
+				if (curbit_shreg == 0xffffffff) ;
+				break;
+			case SOH:
+				
+				break;
+			case BCS:
+			
+				break;
+			}
+
+			*out++ = '0' + (curbit_shreg & 1);
 			nout++;
 		}
 		

@@ -27,10 +27,11 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define FREQ_MARK	1200
-#define FREQ_SPACE	2400
+#define FREQ_MARK		1200
+#define FREQ_SPACE		2400
+#define BAUD			2400
+#define TRANSITION(X)	((X ^ (X >> 1)) & 1)
 
-#define BAUD		2400
 
 class acars2_demod;
 
@@ -46,18 +47,22 @@ ACARS2_API acars2_demod_sptr acars2_make_demod (int samp_rate=48000);
 class ACARS2_API acars2_demod : public gr_block
 {
  private:
+	enum State { PRE_KEY, SYNC, SOH, BCS };
 	friend ACARS2_API acars2_demod_sptr acars2_make_demod (int samp_rate);
 	acars2_demod(int samp_rate);
 
-	uint32_t sphase;						// current pos in the symbol (normalized to 65536)
-	uint32_t sphase_inc;					// position increment (normalized to 65536)
+	uint32_t	sphase;							// current pos in the symbol (normalized to 65536)
+	uint32_t	sphase_inc;						// position increment (normalized to 65536)
 	
-	uint32_t corrlen;						// correlation length = # of samples per symbol
-	float *corr_mark_i, *corr_mark_q;		// sine/cosine reference for mark
-	float *corr_space_i, *corr_space_q;		// sine/cosine reference for space
+	uint32_t	corrlen;						// correlation length = # of samples per symbol
+	float		*corr_mark_i, *corr_mark_q;		// sine/cosine reference for mark
+	float		*corr_space_i, *corr_space_q;	// sine/cosine reference for space
 
-	uint32_t shreg;							// shift register, holds last mark/space
-	uint8_t curbit;
+	State		state;
+	uint32_t	freq_shreg;						// shift register, holds last mark/space frequencies
+	uint32_t	curbit_shreg;					// shift register, holds last 32 decoded bits
+	uint32_t	consecutive;
+	uint32_t	bit_count;
 
  public:
 	~acars2_demod();
