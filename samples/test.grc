@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='ASCII'?>
 <flow_graph>
-  <timestamp>Thu Nov 22 09:44:36 2012</timestamp>
+  <timestamp>Thu Nov 22 13:18:36 2012</timestamp>
   <block>
     <key>options</key>
     <param>
@@ -153,7 +153,7 @@
     </param>
     <param>
       <key>file</key>
-      <value>/home/user/cno/gnuradio/gr-acars2/samples/acars02.wav</value>
+      <value>/home/user/cno/gnuradio/gr-acars2/samples/acars06.wav</value>
     </param>
     <param>
       <key>repeat</key>

@@ -25,6 +25,17 @@
 #include <gr_io_signature.h>
 #include "acars2_demod.h"
 
+static const unsigned char bit_reverse_table[256] = 
+{
+#   define R2(n)     n,     n + 2*64,     n + 1*64,     n + 3*64
+#   define R4(n) R2(n), R2(n + 2*16), R2(n + 1*16), R2(n + 3*16)
+#   define R6(n) R4(n), R4(n + 2*4 ), R4(n + 1*4 ), R4(n + 3*4 )
+    R6(0), R6(2), R6(1), R6(3)
+};
+
+static uint8_t bit_reverse (uint8_t b) {
+	return bit_reverse_table[b];
+}
 
 acars2_demod_sptr
 acars2_make_demod (int samp_rate)
@@ -153,19 +164,21 @@ acars2_demod::general_work(
 			// past symbol boundary, feed a bit
 			sphase &= 0xffffu;
 			curbit_shreg <<= 1;
-			curbit_shreg |= (curbit_shreg ^ freq_shreg) & 1;
+			curbit_shreg |= ((curbit_shreg >> 1) ^ freq_shreg) & 1;
+			bit_count++;
 
 			switch (state) {
+
+			// scan for pre-key, expect >= 128bits of 1s
 			case PRE_KEY:
-				// scan for pre-key, expect >= 128bits of 1s
 				if (TRANSITION(curbit_shreg)) {
 					if (consecutive >= 128) {
-						if (!(curbit_shreg & 1)) {
+						if (curbit_shreg & 1) {
 							// wrong bit interpretation, flip bits
 							curbit_shreg = ~curbit_shreg;
 						}
 						
-						// start with .....110
+						// start with ...11111|110
 						bit_count = 3;
 						state = SYNC;
 					}
@@ -174,9 +187,11 @@ acars2_demod::general_work(
 					consecutive++;
 				}
 				break;
+
+			// match sync chars: '+' (0x2b), '*' (0x2a), <SYN> (0x16), <SYN> (0x16)
 			case SYNC:
 				if (bit_count < 32) {
-					 // feed in more bits
+					 // feed in more bits, consider consecutive bit count if sync chars not found
 					if (TRANSITION(curbit_shreg)) {
 						consecutive = 0;
 					} else {
@@ -184,19 +199,57 @@ acars2_demod::general_work(
 					}
 					break;
 				}
-				// match sync chars: '+' (0x2b), '*' (0x2a), <SYN> (0x16), <SYN> (0x16)
-				if (curbit_shreg == 0xffffffff) ;
+
+				// note the reversed bit order and (even) parity bit
+				if (curbit_shreg == 0xd5546868) {
+					bit_count = 0;
+					state = SOH;
+					break;
+				}
+
+				// fail
+				state = PRE_KEY;
 				break;
-			case SOH:
-				
-				break;
-			case BCS:
 			
+			// match <SOH> (0x01)
+			case SOH:
+				if (bit_count < 8) break; // feed in more bits
+				if ((curbit_shreg & 0xff) == 0x80) { // note the reversed bit ordering
+
+					// output all headers
+					*out++ = '+';
+					*out++ = '*';
+					*out++ = 0x16;
+					*out++ = 0x16;
+					*out++ = 0x01;
+					nout += 5;
+					bit_count = 0;
+					state = BCS;
+					break;
+				}
+
+				// fail
+				state = PRE_KEY;
+				break;
+
+			// output bytes and match <ETX> (0x03) or <ETB> (0x17)
+			case BCS:
+				if (bit_count < 8) break; // feed in more bits
+
+				// output byte value
+				*out++ = bit_reverse(curbit_shreg & 0x7f); // chop off parity bit
+				nout++;
+
+				if (((curbit_shreg & 0xff) == 0xc0) || ((curbit_shreg & 0xff) == 0xe9)) {
+					*out++ = '\n';
+					nout++;
+					bit_count = 0;
+					state = PRE_KEY;
+					break;
+				}
+				bit_count = 0;
 				break;
 			}
-
-			*out++ = '0' + (curbit_shreg & 1);
-			nout++;
 		}
 		
 	}
