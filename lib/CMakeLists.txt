@@ -24,6 +24,9 @@ add_library(gnuradio-acars2 SHARED acars2_demod.cc )
 target_link_libraries(gnuradio-acars2 ${Boost_LIBRARIES} ${GRUEL_LIBRARIES} ${GNURADIO_CORE_LIBRARIES})
 set_target_properties(gnuradio-acars2 PROPERTIES DEFINE_SYMBOL "gnuradio_acars2_EXPORTS")
 
+add_executable(siggen siggen.c)
+target_link_libraries(siggen m)
+
 ########################################################################
 # Install built library files
 ########################################################################
