@@ -26,6 +26,7 @@
 #include <gr_block.h>
 #include <string.h>
 #include <stdio.h>
+#include <boost/circular_buffer.hpp>
 
 class acars2_decode;
 
@@ -42,11 +43,11 @@ class ACARS2_API acars2_decode : public gr_block
 {
  private:
 	friend ACARS2_API acars2_decode_sptr acars2_make_decode ();
-
-  acars2_decode();
+	acars2_decode();
+	boost::circular_buffer<char> buf;
 
  public:
-  ~acars2_decode();
+	~acars2_decode();
 
 	// Where all the action really happens
 	int general_work (int noutput_items,

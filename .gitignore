@@ -1,4 +1,5 @@
 build
 *.kdev4
 *~
+samples/top_block.py
 

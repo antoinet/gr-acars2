@@ -33,8 +33,20 @@ static const unsigned char bit_reverse_table[256] =
     R6(0), R6(2), R6(1), R6(3)
 };
 
+static const unsigned char parity_table[256] = 
+{
+#   define P2(n) n, n^1, n^1, n
+#   define P4(n) P2(n), P2(n^1), P2(n^1), P2(n)
+#   define P6(n) P4(n), P4(n^1), P4(n^1), P4(n)
+    P6(0), P6(1), P6(1), P6(0)
+};
+
 static uint8_t bit_reverse (uint8_t b) {
 	return bit_reverse_table[b];
+}
+
+static uint8_t parity (uint8_t b) {
+	return parity_table[b];
 }
 
 acars2_demod_sptr
@@ -169,6 +181,14 @@ acars2_demod::general_work(
 			curbit_shreg |= ((curbit_shreg >> 1) ^ freq_shreg) & 1;
 			bit_count++;
 
+#ifdef ACARS2_DEBUG
+			if (state != PRE_KEY) {
+				printf("%c", '0' + (curbit_shreg & 1));
+				if ((bit_count % 8) == 0) {
+					printf("\n");
+				}
+			}
+#endif // ACARS2_DEBUG
 
 			switch (state) {
 
@@ -184,6 +204,9 @@ acars2_demod::general_work(
 						// start with ...11111|110
 						bit_count = 3;
 						state = SYNC;
+#ifdef ACARS2_DEBUG
+						printf("\nSYNC\n110");
+#endif // ACARS2_DEBUG
 					}
 					consecutive = 0;
 				} else {
@@ -207,6 +230,9 @@ acars2_demod::general_work(
 				if (curbit_shreg == 0xd5546868) {
 					bit_count = 0;
 					state = SOH;
+#ifdef ACARS2_DEBUG
+					printf("\nSOH\n");
+#endif // ACARS2_DEBUG
 					break;
 				}
 
@@ -227,7 +253,10 @@ acars2_demod::general_work(
 					*out++ = 0x01;
 					nout += 5;
 					bit_count = 0;
-					state = BCS;
+					state = ETX;
+#ifdef ACARS2_DEBUG
+					printf("\nETX\n");
+#endif // ACARS2_DEBUG
 					break;
 				}
 
@@ -236,19 +265,34 @@ acars2_demod::general_work(
 				break;
 
 			// output bytes and match <ETX> (0x03) or <ETB> (0x17)
-			case BCS:
+			case ETX:
 				if (bit_count < 8) break; // feed in more bits
 
 				// output byte value
 				*out++ = bit_reverse(curbit_shreg) & 0x7f; // chop off parity bit
 				nout++;
 
-				if (((curbit_shreg & 0xff) == 0xc0) || ((curbit_shreg & 0xff) == 0xe9)) {
+				if (((curbit_shreg & 0xff) == 0xc1) || ((curbit_shreg & 0xff) == 0xe9)) {
 					bit_count = 0;
-					state = PRE_KEY;
+					state = BCS;
+#ifdef ACARS2_DEBUG
+						printf("\nBCS\n");
+#endif // ACARS2_DEBUG
 					break;
 				}
 				bit_count = 0;
+				break;
+
+			// read in 16bit CRC and <DEL> suffix
+			case BCS:
+				if (bit_count < 24) break; // feed in more bits
+				// TODO process CRC and <DEL>
+				bit_count = 0;
+				state = PRE_KEY;
+#ifdef ACARS2_DEBUG
+				printf("\n---- END OF TRANSMISSION ----\n");
+				printf("PRE_KEY\n");
+#endif // ACARS2_DEBUG
 				break;
 			}
 		}

@@ -32,6 +32,8 @@
 #define BAUD			2400
 #define TRANSITION(X)	((X ^ (X >> 1)) & 1)
 
+#define ACARS2_DEBUG	1
+
 
 class acars2_demod;
 
@@ -47,7 +49,7 @@ ACARS2_API acars2_demod_sptr acars2_make_demod (int samp_rate=48000);
 class ACARS2_API acars2_demod : public gr_block
 {
  private:
-	enum State { PRE_KEY, SYNC, SOH, BCS };
+	enum State { PRE_KEY, SYNC, SOH, ETX, BCS };
 	friend ACARS2_API acars2_demod_sptr acars2_make_demod (int samp_rate);
 	acars2_demod(int samp_rate);
 

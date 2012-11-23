@@ -26,11 +26,23 @@
 #include "acars2_decode.h"
 
 
-static const char *non_printables[] = {
+static const char *ascii7[] = {
 	"<NUL>", "<SOH>", "<STX>", "<ETX>", "<EOT>", "<ENQ>", "<ACK>", "<BEL>",
 	"<BS>",  "<TAB>", "<LF>",  "<VT>",  "<FF>",  "<CR>",  "<SO>",  "<SI>",
 	"<DLE>", "<DC1>", "<DC2>", "<DC3>", "<DC4>", "<NAK>", "<SYN>", "<ETB>",
-	"<CAN>", "<EM>",  "<SUB>", "<ESC>", "<FS>",  "<GS>",  "<RS>",  "<US>"
+	"<CAN>", "<EM>",  "<SUB>", "<ESC>", "<FS>",  "<GS>",  "<RS>",  "<US>",
+	" ",     "!",     "\"",    "#",     "$",     "%",     "&",     "'",
+	"(",     ")",     "*",     "+",     ",",     "-",     ".",     "/",
+	"0",     "1",     "2",     "3",     "4",     "5",     "6",     "7",
+	"8",     "9",     ":",     ";",     "<",     "=",     ">",     "?",
+	"@",     "A",     "B",     "C",     "D",     "E",     "F",     "G",
+	"H",     "I",     "J",     "K",     "L",     "M",     "N",     "O",
+	"P",     "Q",     "R",     "S",     "T",     "U",     "V",     "W",
+	"X",     "Y",     "Z",     "[",     "\\",    "]",     "^",     "_",
+	"`",     "a",     "b",     "c",     "d",     "e",     "f",     "g",
+	"h",     "i",     "j",     "k",     "l",     "m",     "n",     "o",
+	"p",     "q",     "r",     "s",     "t",     "u",     "v",     "w",
+	"x",     "y",     "z",     "{",     "|",     "}",     "~",     "<DEL>"
 };
 
 static const uint32_t
@@ -55,7 +67,8 @@ acars2_make_decode ()
 acars2_decode::acars2_decode ()
   : gr_block ("acars2_decode",
 		   gr_make_io_signature(1, 1, sizeof (uint8_t)),
-		   gr_make_io_signature(1, 1, sizeof (uint8_t)))
+		   gr_make_io_signature(1, 1, sizeof (uint8_t))),
+	buf(32)
 {
 	// Put in <+constructor stuff+> here
 	set_fixed_rate(false);
@@ -88,12 +101,13 @@ acars2_decode::general_work (int noutput_items,
 	// Do <+signal processing+>
 	for (i = 0; i < nin; i++) {
 		c = *in++;
-		if (c < 0x20) {
-			nout += _strncpy(&out, non_printables[c], 5);
-		} else {
-			*out++ = c;
+		if (buf.back() == '+' && c == '*') {
+			// start of a new message
+			*out++ = '\n';
 			nout++;
 		}
+		buf.push_back(c);
+		nout += _strncpy(&out, ascii7[c], 5);
 	}
 
 	// Tell runtime system how many input items we consumed on
