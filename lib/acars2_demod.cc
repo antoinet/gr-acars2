@@ -203,7 +203,7 @@ acars2_demod::general_work(
 					break;
 				}
 
-				// note the reversed bit order and (even) parity bit
+				// note the reversed bit order and (odd) parity bit
 				if (curbit_shreg == 0xd5546868) {
 					bit_count = 0;
 					state = SOH;
