@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='ASCII'?>
 <flow_graph>
-  <timestamp>Fri Nov 23 11:57:54 2012</timestamp>
+  <timestamp>Tue Nov 27 10:46:42 2012</timestamp>
   <block>
     <key>options</key>
     <param>
@@ -192,37 +192,6 @@
     </param>
   </block>
   <block>
-    <key>gr_wavfile_source</key>
-    <param>
-      <key>id</key>
-      <value>gr_wavfile_source_0</value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>file</key>
-      <value>acars00.wav</value>
-    </param>
-    <param>
-      <key>repeat</key>
-      <value>False</value>
-    </param>
-    <param>
-      <key>nchan</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(135, 277)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-  </block>
-  <block>
     <key>audio_sink</key>
     <param>
       <key>id</key>
@@ -251,6 +220,37 @@
     <param>
       <key>_coordinate</key>
       <value>(424, 495)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+  </block>
+  <block>
+    <key>gr_wavfile_source</key>
+    <param>
+      <key>id</key>
+      <value>gr_wavfile_source_0</value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>file</key>
+      <value>/tmp/extract.wav</value>
+    </param>
+    <param>
+      <key>repeat</key>
+      <value>False</value>
+    </param>
+    <param>
+      <key>nchan</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(135, 277)</value>
     </param>
     <param>
       <key>_rotation</key>
