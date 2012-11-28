@@ -21,7 +21,7 @@
 
 from gnuradio import gr, eng_notation, optfir, audio, uhd, blks2
 from gnuradio.eng_option import eng_option
-from gnuradio.wxgui import stdgui2, fftsink2, form, slider
+from gnuradio.wxgui import stdgui2, fftsink2, waterfallsink2, form, slider
 from optparse import OptionParser
 import wx
 import math
@@ -34,89 +34,97 @@ class acars_rx(stdgui2.std_top_block):
 		parser=OptionParser(option_class=eng_option)
 		parser.add_option("-a", "--args", type="string", default="",
 						  help="UHD device address args [default=%default]")
+		parser.add_option("", "--spec", type="string", default=None,
+						  help="Subdevice of UHD device where appropriate")
+		parser.add_option("-A", "--antenna", type="string", default=None,
+						  help="select Rx Antenna where appropriate")
+		parser.add_option("-s", "--samp-rate", type="eng_float", default="250e3",
+						  help="set sample rate (bandwidth) [default=%default]")
+		parser.add_option("-d", "--device", type="string", default="",
+						  help="PCM device name, e.g. hw:0,0  /dev/dsp  pulse  etc.")
+		parser.add_option("-w", "--wav-file", type="string", default="",
+						  help="WAV file output.")
 		(options, args) = parser.parse_args()
+		if len(args) != 0:
+			parser.print_help()
+			sys.exit(1)
 		
 		self.frame = frame
 		self.panel = panel
 		self.vol = 0
-		self.freq = 0
+		self.freq = 131725000
 		
-		usrp_rate = 256e3
-		demod_rate = 64e3
-		audio_rate = 48e3
+		usrp_rate = options.samp_rate # default: 250e3
+		audio_rate = 32e3
 		
-		# USRP source
+		# init USRP source block
 		self.usrp = uhd.usrp_source(device_addr=options.args, stream_args=uhd.stream_args('fc32'))
+		if (options.spec):
+			self.usrp.set_subdev_spec(options.spec, 0)
+		if (options.antenna):
+			self.usrp.set_antenna(options.antenna, 0)
 		self.usrp.set_samp_rate(usrp_rate)
-		dev_rate = self.usrp.get_samp_rate()
-		rrate = usrp_rate / dev_rate
-		self.resamp = blks2.pfb_arb_resampler_ccf(rrate)
-		print "Using USRP sampling rate ", dev_rate
+		self.usrp.set_center_freq(self.freq)
 		
-		# low pass filter
-		chan_filt_coeffs = gr.firdes.low_pass_2(1,				# gain
+		# FIR block (5KHz low pass filter)
+		chan_filt_coeffs = gr.firdes.low_pass_2(8,				# gain
 												 usrp_rate,		# sampling rate
-												 2e3,			# passband_cutoff
+												 5e3,			# passband_cutoff
 												 1e2,			# transition bw
 												 60)			# stopband attenuation
-		self.chan_filt = gr.fir_filter_ccf(int(usrp_rate//demod_rate), chan_filt_coeffs)
+		self.chan_filt = gr.freq_xlating_fir_filter_ccf(1,						# decimation
+														 chan_filt_coeffs,		# taps
+														 0,						# center freq
+														 usrp_rate)				# samp rate
 		
-		# AM demodulator
+		
+		# AM demodulator block
 		self.am_demod = gr.complex_to_mag()
 		
-		# volume control
-		self.vol_control = gr.multiply_const_ff(self.vol)
+		# resampler block
+		# TODO make decimation/interpolation generic
+		self.resamp = blks2.rational_resampler_fff(interpolation=128, decimation=1000, taps=None, fractional_bw=None)
 		
-		# audio sink
-		self.audio_sink = audio.sink(int (audio_rate), "pulse", False)
+		# null sink (in case no other output is given)
+		self.nullsink = gr.null_sink(gr.sizeof_float)
 		
-		self.connect(self.usrp, self.resamp, self.chan_filt, self.am_demod, self.vol_control, self.audio_sink)
-		self._build_gui(vbox, usrp_rate, demod_rate, audio_rate)
+		# build flow graph
+		self.connect(self.usrp, self.chan_filt, self.am_demod, self.resamp, self.nullsink)
 		
-		if not(self.set_freq(131725000)):
-			print "Failed to set freq"
+		# audio sink (optional)
+		if (options.device):
+			print "using audio device %s" % options.device
+			self.audio_sink = audio.sink(int (audio_rate), options.device, True)
+			self.connect(self.resamp, self.audio_sink)
 		
-		print "USRP intialized..."
+		# WAV file sink (optional)
+		if (options.wav_file):
+			print "writing to WAV file %s" % options.wav_file
+			self.wavsink = gr.wavfile_sink(options.wav_file, 1, int(audio_rate), 16)
+			self.connect(self.resamp, self.wavsink)
+		
+		
+		self._build_gui(vbox, usrp_rate, audio_rate)
+		
+		print "built flow graph..."
 	
 	
 	
-	def _build_gui(self, vbox, usrp_rate, demod_rate, audio_rate):
+	
+	def _build_gui(self, vbox, usrp_rate, audio_rate):
 		
-		def _form_set_freq(kv):
-			return self.set_freq(kv['freq'])
+		# Waterfall before channel filter
+		self.waterfall = waterfallsink2.waterfall_sink_c(
+			self.panel, title="USRP", fft_size=512, sample_rate=usrp_rate)
+		self.connect(self.usrp, self.waterfall)
+		vbox.Add(self.waterfall.win, 4, wx.EXPAND)
 		
+		# FFT after channel filter
 		self.post_filt_fft = fftsink2.fft_sink_c(self.panel, title="Post Channel filter",
-			fft_size=512, sample_rate=demod_rate)
+			fft_size=512, sample_rate=usrp_rate, peak_hold=True)
 		self.connect(self.chan_filt, self.post_filt_fft)
 		vbox.Add(self.post_filt_fft.win, 4, wx.EXPAND)
-		
-		self.myform = myform = form.form()
-		hbox = wx.BoxSizer(wx.HORIZONTAL)
-		hbox.Add((5, 0), 0)
-		myform['freq'] = form.float_field(
-			parent=self.panel, sizer=hbox, label="Freq", weight=1,
-			callback=myform.check_input_and_call(_form_set_freq))
-		
-		hbox.Add((5, 0), 0)
-		myform['freq_slider'] = form.quantized_slider_field(parent=self.panel,
-			sizer=hbox, weight=3, range=(520.0e3, 1611.0e3, 1.0e3), callback=self.set_freq)
-	
-	
-	
-	def set_freq(self, target_freq):
-		"""
-		Set the center frequency we're interested in.
-		@param target_freq: frequency in Hz
-		@rypte: bool
-		"""
-		r = self.usrp.set_center_freq(target_freq, 0)
-		if r:
-			self.freq = target_freq
-			self.myform['freq'].set_value(target_freq)				# update displayed value
-			self.myform['freq_slider'].set_value(target_freq)
-			self.post_filt_fft.set_baseband_freq(target_freq)
-			return True
-		return False
+
 
 
 if __name__ == '__main__':
