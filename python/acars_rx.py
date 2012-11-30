@@ -23,6 +23,7 @@ from gnuradio import gr, eng_notation, optfir, audio, uhd, blks2
 from gnuradio.eng_option import eng_option
 from gnuradio.wxgui import stdgui2, fftsink2, waterfallsink2, form, slider
 from optparse import OptionParser
+import acars2
 import wx
 import math
 import sys
@@ -38,6 +39,10 @@ class acars_rx(stdgui2.std_top_block):
 						  help="Subdevice of UHD device where appropriate")
 		parser.add_option("-A", "--antenna", type="string", default=None,
 						  help="select Rx Antenna where appropriate")
+		parser.add_option("-f", "--freq", type="string", default="131725000",
+						  help="Frequency in Hz")
+		parser.add_option("-o", "--output", type="string", default="output.txt",
+						  help="ACARS log output")
 		parser.add_option("-s", "--samp-rate", type="eng_float", default="250e3",
 						  help="set sample rate (bandwidth) [default=%default]")
 		parser.add_option("-d", "--device", type="string", default="",
@@ -51,11 +56,10 @@ class acars_rx(stdgui2.std_top_block):
 		
 		self.frame = frame
 		self.panel = panel
-		self.vol = 0
-		self.freq = 131725000
+		self.freq = float(options.freq)
 		
-		usrp_rate = options.samp_rate # default: 250e3
-		audio_rate = 32e3
+		usrp_rate = options.samp_rate
+		audio_rate = 48e3
 		
 		# init USRP source block
 		self.usrp = uhd.usrp_source(device_addr=options.args, stream_args=uhd.stream_args('fc32'))
@@ -64,7 +68,7 @@ class acars_rx(stdgui2.std_top_block):
 		if (options.antenna):
 			self.usrp.set_antenna(options.antenna, 0)
 		self.usrp.set_samp_rate(usrp_rate)
-		self.usrp.set_center_freq(self.freq)
+		self.usrp.set_center_freq(self.freq, 0)
 		
 		# FIR block (5KHz low pass filter)
 		chan_filt_coeffs = gr.firdes.low_pass_2(8,				# gain
@@ -82,22 +86,25 @@ class acars_rx(stdgui2.std_top_block):
 		self.am_demod = gr.complex_to_mag()
 		
 		# resampler block
-		# TODO make decimation/interpolation generic
-		self.resamp = blks2.rational_resampler_fff(interpolation=128, decimation=1000, taps=None, fractional_bw=None)
+		self.resamp = blks2.rational_resampler_fff(interpolation=int(audio_rate), decimation=int(usrp_rate), taps=None, fractional_bw=None)
 		
-		# null sink (in case no other output is given)
-		self.nullsink = gr.null_sink(gr.sizeof_float)
+		# acars2 demod/decode blocks
+		self.acars2_demod = acars2.demod(int(audio_rate))
+		self.acars2_decode = acars2.decode()
+		
+		# file sink
+		self.file_sink = gr.file_sink(gr.sizeof_char, options.output)
 		
 		# build flow graph
-		self.connect(self.usrp, self.chan_filt, self.am_demod, self.resamp, self.nullsink)
+		self.connect(self.usrp, self.chan_filt, self.am_demod, self.resamp, self.acars2_demod, self.acars2_decode, self.file_sink)
 		
-		# audio sink (optional)
+		# add audio sink (optional)
 		if (options.device):
 			print "using audio device %s" % options.device
 			self.audio_sink = audio.sink(int (audio_rate), options.device, True)
 			self.connect(self.resamp, self.audio_sink)
 		
-		# WAV file sink (optional)
+		# add WAV file sink (optional)
 		if (options.wav_file):
 			print "writing to WAV file %s" % options.wav_file
 			self.wavsink = gr.wavfile_sink(options.wav_file, 1, int(audio_rate), 16)
@@ -114,16 +121,24 @@ class acars_rx(stdgui2.std_top_block):
 	def _build_gui(self, vbox, usrp_rate, audio_rate):
 		
 		# Waterfall before channel filter
-		self.waterfall = waterfallsink2.waterfall_sink_c(
-			self.panel, title="USRP", fft_size=512, sample_rate=usrp_rate)
+		self.waterfall = waterfallsink2.waterfall_sink_c(self.panel,
+														  title="USRP", 
+														  fft_size=512, 
+														  sample_rate=usrp_rate,
+														  baseband_freq=self.freq)
 		self.connect(self.usrp, self.waterfall)
 		vbox.Add(self.waterfall.win, 4, wx.EXPAND)
 		
 		# FFT after channel filter
-		self.post_filt_fft = fftsink2.fft_sink_c(self.panel, title="Post Channel filter",
-			fft_size=512, sample_rate=usrp_rate, peak_hold=True)
+		self.post_filt_fft = fftsink2.fft_sink_c(self.panel,
+												  title="Post Channel filter",
+												  fft_size=512,
+												  sample_rate=usrp_rate,
+												  baseband_freq=self.freq,
+												  peak_hold=True)
 		self.connect(self.chan_filt, self.post_filt_fft)
 		vbox.Add(self.post_filt_fft.win, 4, wx.EXPAND)
+		self.post_filt_fft.win.autoscale()
 
 
 

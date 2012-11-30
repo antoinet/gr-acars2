@@ -56,7 +56,7 @@ class ACARS2_API acars2_demod : public gr_block
 	uint32_t	sphase;							// current pos in the symbol (normalized to 65536)
 	uint32_t	sphase_inc;						// position increment (normalized to 65536)
 	
-	uint32_t	corrlen;						// correlation length = # of samples per symbol
+	uint32_t	corrlen;						// correlation length = multiple of # of samples per symbol
 	float		*corr_mark_i, *corr_mark_q;		// sine/cosine reference for mark
 	float		*corr_space_i, *corr_space_q;	// sine/cosine reference for space
 
