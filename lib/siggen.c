@@ -30,6 +30,7 @@
 #define SAMP_RATE		48000
 #define SYMBOL_LEN		(SAMP_RATE/BAUD)
 #define DATA_LEN(X)		(X*SYMBOL_LEN*8)
+#define NRAND_N			20
 
 static const unsigned char bit_reverse_table[256] = 
 {
@@ -39,17 +40,44 @@ static const unsigned char bit_reverse_table[256] =
     R6(0), R6(2), R6(1), R6(3)
 };
 
+typedef struct {
+	float* data;
+	int len;
+} floatbuf_t;
+
 static uint8_t bit_reverse (uint8_t b) {
 	return bit_reverse_table[b];
 }
 
-static float* siggen (char* buf, uint32_t len) {
+static float nrand (float mean, float variance) {
+	int i;
+	float res = 0.0f;
+
+	for (i = 0; i < NRAND_N; i++) {
+		res += rand()/(RAND_MAX + 1.0);
+	}
+	
+	return mean + sqrtf(variance)*res/NRAND_N;
+}
+
+static floatbuf_t siggen (char* buf, uint32_t len) {
 	uint32_t num_samples = DATA_LEN(len);
 	float f, *p_data, *data;
-	int i, j, k, mark = 0;
+	int i, j, k, preamble, epilogue, mark = 0;
 	char curbyte, curbit, *p_buf = buf;
+	floatbuf_t res;
 	
-	p_data = data = calloc(num_samples, sizeof(float));
+	preamble = (int)nrand(1.0f, 0.1f)*SAMP_RATE;
+	epilogue = (int)nrand(1.0f, 0.1f)*SAMP_RATE;
+	
+	p_data = data = calloc(preamble + num_samples + epilogue, sizeof(float));
+	
+	// preamble
+	for (i = 0; i < preamble; i++) {
+		*p_data++ = nrand(0.0f, 0.4f);
+	}
+	
+	// data
 	for (i = 0; i < len; i++) {
 		curbyte = bit_reverse(*p_buf++);
 		for (j = 0; j < 8; j++) {
@@ -58,18 +86,26 @@ static float* siggen (char* buf, uint32_t len) {
 			if (curbit) { // mark
 				mark = !mark;
 				for (k = 0; k < SYMBOL_LEN; k++) {
-					*p_data++ = sin(f);
+					*p_data++ = 0.1f + 0.6f*sin(f);
 					f += 2.0f*M_PI*FREQ_MARK/SAMP_RATE;
 				}
 			} else { // space
 				for (k = 0; k < SYMBOL_LEN; k++) {
-					*p_data++ = sin(f);
+					*p_data++ = 0.1f + 0.6f*sin(f);
 					f += 2.0f*M_PI*FREQ_SPACE/SAMP_RATE;
 				}
 			}
 		}
 	}
-	return data;
+	
+	// epilogue
+	for (i = 0; i < epilogue; i++) {
+	  *p_data++ = nrand(0.0f, 0.4f);
+	}
+	
+	res.data = data;
+	res.len = preamble + num_samples + epilogue;
+	return res;
 }
 
 
@@ -82,9 +118,10 @@ int main (int argc, char* argv[]) {
 	}
 
 	uint32_t length = strlen(argv[1]);
-	float* data = siggen(argv[1], length);
+	floatbuf_t buf = siggen(argv[1], length);
 
-	for (i = 0; i < DATA_LEN(length); i++) {
-		printf("%f\n", *data++);
+	for (i = 0; i < buf.len; i++) {
+		printf("%f\n", *(buf.data)++);
 	}
+	return 0;
 }
