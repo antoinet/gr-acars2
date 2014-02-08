@@ -20,8 +20,13 @@
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
 
-add_library(gnuradio-acars2 SHARED acars2_demod.cc acars2_decode.cc )
-target_link_libraries(gnuradio-acars2 ${Boost_LIBRARIES} ${GRUEL_LIBRARIES} ${GNURADIO_CORE_LIBRARIES})
+list(APPEND acars2_sources
+	demod_impl.cc
+	decode_impl.cc
+)
+
+add_library(gnuradio-acars2 SHARED ${acars2_sources})
+target_link_libraries(gnuradio-acars2 ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
 set_target_properties(gnuradio-acars2 PROPERTIES DEFINE_SYMBOL "gnuradio_acars2_EXPORTS")
 
 add_executable(siggen siggen.c)

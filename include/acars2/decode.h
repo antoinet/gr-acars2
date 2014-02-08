@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2012 <+YOU OR YOUR COMPANY+>.
+ * Copyright 2014 <+YOU OR YOUR COMPANY+>.
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,39 +22,35 @@
 #ifndef INCLUDED_ACARS2_DECODE_H
 #define INCLUDED_ACARS2_DECODE_H
 
-#include <acars2_api.h>
-#include <gr_block.h>
-#include <string.h>
-#include <stdio.h>
-#include <boost/circular_buffer.hpp>
+#include <acars2/api.h>
+#include <gnuradio/block.h>
 
-class acars2_decode;
+namespace gr {
+  namespace acars2 {
 
-typedef boost::shared_ptr<acars2_decode> acars2_decode_sptr;
+    /*!
+     * \brief <+description of block+>
+     * \ingroup acars2
+     *
+     */
+    class ACARS2_API decode : virtual public gr::block
+    {
+     public:
+      typedef boost::shared_ptr<decode> sptr;
 
-ACARS2_API acars2_decode_sptr acars2_make_decode ();
+      /*!
+       * \brief Return a shared_ptr to a new instance of acars2::decode.
+       *
+       * To avoid accidental use of raw pointers, acars2::decode's
+       * constructor is in a private implementation
+       * class. acars2::decode::make is the public interface for
+       * creating new instances.
+       */
+      static sptr make();
+    };
 
-/*!
- * \brief <+description+>
- * \ingroup block
- *
- */
-class ACARS2_API acars2_decode : public gr_block
-{
- private:
-	friend ACARS2_API acars2_decode_sptr acars2_make_decode ();
-	acars2_decode();
-	boost::circular_buffer<char> buf;
-
- public:
-	~acars2_decode();
-
-	// Where all the action really happens
-	int general_work (int noutput_items,
-	    gr_vector_int &ninput_items,
-	    gr_vector_const_void_star &input_items,
-	    gr_vector_void_star &output_items);
-};
+  } // namespace acars2
+} // namespace gr
 
 #endif /* INCLUDED_ACARS2_DECODE_H */
 

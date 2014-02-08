@@ -22,7 +22,7 @@
 #ifndef INCLUDED_ACARS2_API_H
 #define INCLUDED_ACARS2_API_H
 
-#include <gruel/attributes.h>
+#include <gnuradio/attributes.h>
 
 #ifdef gnuradio_acars2_EXPORTS
 #  define ACARS2_API __GR_ATTR_EXPORT
