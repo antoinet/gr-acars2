@@ -9,13 +9,13 @@
 
 
 %{
-#include "acars2_demod.h"
-#include "acars2_decode.h"
+#include "acars2/demod.h"
+#include "acars2/decode.h"
 %}
 
 
-GR_SWIG_BLOCK_MAGIC(acars2,demod);
-%include "acars2_demod.h"
+%include "acars2/demod.h"
+GR_SWIG_BLOCK_MAGIC2(acars2,demod);
 
-GR_SWIG_BLOCK_MAGIC(acars2,decode);
-%include "acars2_decode.h"
+%include "acars2/decode.h"
+GR_SWIG_BLOCK_MAGIC2(acars2,decode);
