@@ -21,7 +21,7 @@
 # Install public header files
 ########################################################################
 install(FILES
-    acars2/api.h
-    acars2/demod.h 
-	acars2/decode.h DESTINATION include/acars2
+    api.h
+    demod.h 
+    decode.h DESTINATION include/acars2
 )

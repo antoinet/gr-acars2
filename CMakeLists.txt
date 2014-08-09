@@ -1,21 +1,22 @@
-# Copyright 2011 Free Software Foundation, Inc.
-# 
+# Copyright 2011,2012 Free Software Foundation, Inc.
+#
 # This file is part of GNU Radio
-# 
+#
 # GNU Radio is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3, or (at your option)
 # any later version.
-# 
+#
 # GNU Radio is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with GNU Radio; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
+
 
 ########################################################################
 # Project setup
@@ -68,7 +69,7 @@ endif()
 include(GrPlatform) #define LIB_SUFFIX
 set(GR_RUNTIME_DIR      bin)
 set(GR_LIBRARY_DIR      lib${LIB_SUFFIX})
-set(GR_INCLUDE_DIR      include)
+set(GR_INCLUDE_DIR      include/acars2)
 set(GR_DATA_DIR         share)
 set(GR_PKG_DATA_DIR     ${GR_DATA_DIR}/${CMAKE_PROJECT_NAME})
 set(GR_DOC_DIR          ${GR_DATA_DIR}/doc)
@@ -83,22 +84,39 @@ set(GRC_BLOCKS_DIR      ${GR_PKG_DATA_DIR}/grc/blocks)
 # Find gnuradio build dependencies
 ########################################################################
 find_package(GnuradioRuntime)
+find_package(CppUnit)
+
+# To run a more advanced search for GNU Radio and it's components and
+# versions, use the following. Add any components required to the list
+# of GR_REQUIRED_COMPONENTS (in all caps) and change "version" to the
+# minimum API compatible version required.
+#
+# set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER ...)
+# find_package(Gnuradio "version")
 
 if(NOT GNURADIO_RUNTIME_FOUND)
-    message(FATAL_ERROR "GnuRadio Core required to compile acars2")
+    message(FATAL_ERROR "GnuRadio Runtime required to compile acars2")
+endif()
+if(NOT CPPUNIT_FOUND)
+    message(FATAL_ERROR "CppUnit required to compile acars2")
 endif()
 
 ########################################################################
 # Setup the include and linker paths
 ########################################################################
 include_directories(
+    ${CMAKE_SOURCE_DIR}/lib
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_BINARY_DIR}/lib
+    ${CMAKE_BINARY_DIR}/include
     ${Boost_INCLUDE_DIRS}
+    ${CPPUNIT_INCLUDE_DIRS}
     ${GNURADIO_RUNTIME_INCLUDE_DIRS}
 )
 
 link_directories(
     ${Boost_LIBRARY_DIRS}
+    ${CPPUNIT_LIBRARY_DIRS}
     ${GNURADIO_RUNTIME_LIBRARY_DIRS}
 )
 
@@ -121,10 +139,17 @@ add_custom_target(uninstall
 ########################################################################
 # Add subdirectories
 ########################################################################
-add_subdirectory(include)
+add_subdirectory(include/acars2)
 add_subdirectory(lib)
 add_subdirectory(swig)
 add_subdirectory(python)
 add_subdirectory(grc)
 add_subdirectory(apps)
 add_subdirectory(docs)
+
+########################################################################
+# Install cmake search helper for this library
+########################################################################
+install(FILES cmake/Modules/acars2Config.cmake        
+    DESTINATION lib/cmake/acars2
+)
