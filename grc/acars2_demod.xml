@@ -4,12 +4,27 @@
   <key>acars2_demod</key>
   <category>acars2</category>
   <import>import acars2</import>
-  <make>acars2.demod($samp_rate)</make>
+  <make>acars2.demod($samp_rate, $debug)</make>
   <param>
     <name>Sample Rate</name>
     <key>samp_rate</key>
     <type>int</type>
   </param>
+  <param>
+    <name>Debug</name>
+    <key>debug</key>
+    <type>bool</type>
+    <option>
+      <name>Yes</name>
+      <key>True</key>
+    </option>
+    <option>
+      <name>No</name>
+      <key>False</key>
+    </option>
+  </param>
+
+
 
   <sink>
     <name>in</name>

@@ -31,7 +31,7 @@
 #define BAUD			2400
 #define TRANSITION(X)	((X ^ (X >> 1)) & 1)
 
-#define ACARS2_DEBUG	1
+// #define ACARS2_DEBUG	1
 
 
 namespace gr {
@@ -59,9 +59,10 @@ namespace gr {
 			uint32_t	curbit_shreg;					// shift register, holds last 32 decoded bits
 			uint32_t	consecutive;
 			uint32_t	bit_count;
+			uint32_t	acars2_debug;
 
 		 public:
-			 demod_impl(int samp_rate);
+			 demod_impl(int samp_rate, int debug);
 			 ~demod_impl();
 
 			// Where all the action really happens
