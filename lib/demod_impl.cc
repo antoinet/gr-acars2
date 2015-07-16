@@ -53,9 +53,9 @@ namespace gr {
 		}
 
 		demod::sptr
-		demod::make (int samp_rate)
+		demod::make (int samp_rate, int debug)
 		{
-			return gnuradio::get_initial_sptr (new demod_impl(samp_rate));
+			return gnuradio::get_initial_sptr (new demod_impl(samp_rate, debug));
 		}
 
 		// multiply-accumulate
@@ -79,17 +79,18 @@ namespace gr {
 		/*
 		 * The private constructor
 		 */
-		demod_impl::demod_impl (int samp_rate)
+		demod_impl::demod_impl (int samp_rate, int debug)
 		  : gr::block ("acars2_demod_fb",
 				   gr::io_signature::make(1, 1, sizeof(float)),
 				   gr::io_signature::make(1, 1, sizeof(uint8_t))),
-			freq_shreg(0), curbit_shreg(0), bit_count(0),
+			freq_shreg(0), curbit_shreg(0), bit_count(0), acars2_debug(0),
 			consecutive(0), sphase(0), state(PRE_KEY)
 		{
 			float f;
 			int i;
 	
 			sphase_inc = 0x10000u*BAUD/samp_rate;
+			acars2_debug = debug;
 
 			corrlen = 2*samp_rate/BAUD;
 			corr_mark_i = (float*) calloc(corrlen, sizeof(float));
@@ -119,13 +120,14 @@ namespace gr {
 			}
 			*/
 
-			printf(" ACARS demod\n"
-				"samp_rate:\t%d\n"
-				"baud_rate:\t%d\n"
-				"sphase_inc:\t%d\n",
-				samp_rate,
-				BAUD,
-				sphase_inc);
+			if (acars2_debug)
+				printf(" ACARS demod\n"
+					"samp_rate:\t%d\n"
+					"baud_rate:\t%d\n"
+					"sphase_inc:\t%d\n",
+					samp_rate,
+					BAUD,
+					sphase_inc);
 
 			set_fixed_rate(false);
 			set_relative_rate(1.0/corrlen/8);
@@ -184,14 +186,13 @@ namespace gr {
 					curbit_shreg |= ((curbit_shreg >> 1) ^ freq_shreg) & 1;
 					bit_count++;
 
-		#ifdef ACARS2_DEBUG
-					if (state != PRE_KEY) {
+					
+					if (acars2_debug && state != PRE_KEY) {
 						printf("%c", '0' + (curbit_shreg & 1));
 						if ((bit_count % 8) == 0) {
 							printf("\n");
 						}
 					}
-		#endif // ACARS2_DEBUG
 
 					switch (state) {
 
@@ -207,9 +208,8 @@ namespace gr {
 								// start with ...11111|110
 								bit_count = 3;
 								state = SYNC;
-		#ifdef ACARS2_DEBUG
-								printf("\nSYNC\n110");
-		#endif // ACARS2_DEBUG
+								if (acars2_debug)
+									printf("\nSYNC\n110");
 							}
 							consecutive = 0;
 						} else {
@@ -233,9 +233,8 @@ namespace gr {
 						if (curbit_shreg == 0xd5546868) {
 							bit_count = 0;
 							state = SOH;
-		#ifdef ACARS2_DEBUG
-							printf("\nSOH\n");
-		#endif // ACARS2_DEBUG
+							if (acars2_debug)
+								printf("\nSOH\n");
 							break;
 						}
 
@@ -257,9 +256,9 @@ namespace gr {
 							nout += 5;
 							bit_count = 0;
 							state = ETX;
-		#ifdef ACARS2_DEBUG
-							printf("\nETX\n");
-		#endif // ACARS2_DEBUG
+
+							if (acars2_debug)
+								printf("\nETX\n");
 							break;
 						}
 
@@ -278,9 +277,9 @@ namespace gr {
 						if (((curbit_shreg & 0xff) == 0xc1) || ((curbit_shreg & 0xff) == 0xe9)) {
 							bit_count = 0;
 							state = BCS;
-		#ifdef ACARS2_DEBUG
+
+							if (acars2_debug)
 								printf("\nBCS\n");
-		#endif // ACARS2_DEBUG
 							break;
 						}
 						bit_count = 0;
@@ -292,10 +291,10 @@ namespace gr {
 						// TODO process CRC and <DEL>
 						bit_count = 0;
 						state = PRE_KEY;
-		#ifdef ACARS2_DEBUG
-						printf("\n---- END OF TRANSMISSION ----\n");
-						printf("PRE_KEY\n");
-		#endif // ACARS2_DEBUG
+						if (acars2_debug){
+							printf("\n---- END OF TRANSMISSION ----\n");
+							printf("PRE_KEY\n");
+						}
 						break;
 					}
 				}

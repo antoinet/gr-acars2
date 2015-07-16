@@ -46,7 +46,7 @@ namespace gr {
        * class. acars2::demod::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int samp_rate=48000);
+      static sptr make(int samp_rate=48000, int debug=0);
     };
 
   } // namespace acars2
